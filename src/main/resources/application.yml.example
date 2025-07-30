@@ -1,0 +1,10 @@
+# application.yml
+server:
+  port: 8080
+  address: 0.0.0.0
+
+encryption:
+  aes-key: "HIER EINEN BASE64 AES-KEY EINTRAGEN (z. B. openssl rand -base64 32)"
+
+
+

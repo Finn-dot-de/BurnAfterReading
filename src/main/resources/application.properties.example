@@ -1,0 +1,18 @@
+# Beispielkonfiguration für lokale Entwicklung
+
+spring.application.name=BurnAfterReading
+
+# Logging
+logging.level.web=debug
+logging.level.sql=debug
+logging.level.org.hibernate.orm.jbdc.bind=trace
+
+# PostgreSQL-Datenbank
+spring.datasource.url=jdbc:postgresql://localhost:5432/burnafterreading
+spring.datasource.username=DEIN_USER
+spring.datasource.password=DEIN_PASSWORT
+
+# Hibernate-Einstellungen
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect

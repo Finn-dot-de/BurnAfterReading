@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Burn After Reading – Nachricht empfangen</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+    <link href='https://fonts.googleapis.com/css?family=Amethysta' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Caesar+Dressing' rel='stylesheet' type='text/css'>
+</head>
+<body>
+<div class="container">
+    <h1>
+        <span class="fire">N</span><span class="burn">a</span><span class="burn">c</span><span
+            class="fire">h</span><span class="burn">r</span><span class="fire">i</span><span class="burn">c</span><span
+            class="fire">h</span><span class="burn">t</span>
+        <br>
+        <br>
+        <span class="fire">e</span><span class="burn">m</span><span
+            class="fire">p</span><span class="burn">f</span><span class="fire">a</span><span class="burn">n</span><span
+            class="fire">g</span><span class="burn">e</span><span class="fire">n</span>
+    </h1>
+
+    <p>Willst du diese Nachricht wirklich abrufen? Sie wird sofort gelöscht und kann danach nicht erneut geöffnet
+        werden.</p>
+    <br>
+    <button id="confirmBtn">Nachricht anzeigen</button>
+
+    <div id="messageContainer" class="hidden">
+        <p>Nachricht:</p>
+        <pre id="readMessage"></pre>
+    </div>
+
+    <div id="notFound" class="hidden warn">
+        Nachricht existiert nicht oder wurde bereits abgerufen.
+    </div>
+    <button id="main_site_link" onclick="window.location.href='index.html'">Zur Startseite</button>
+
+</div>
+
+<script src="scripts/view.js"></script>
+</body>
+</html>

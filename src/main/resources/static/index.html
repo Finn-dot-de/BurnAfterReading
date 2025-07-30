@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Burn After Reading – Nachricht senden</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+    <link href='https://fonts.googleapis.com/css?family=Amethysta' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Caesar+Dressing' rel='stylesheet' type='text/css'>
+</head>
+<body>
+<div class="container">
+
+    <h1>
+        <span class="fire">B</span><span class="burn">u</span><span class="burn">r</span><span class="fire">n</span>
+        <span class="burn">A</span><span class="fire">f</span><span class="burn">t</span><span
+            class="burn">e</span><span class="fire">r</span>
+        <br>
+        <br>
+        <span class="burn">R</span><span class="fire">e</span><span class="burn">a</span><span
+            class="fire">d</span><span class="burn">i</span><span class="fire">n</span><span class="burn">g</span>
+    </h1>
+
+    <p>Diese Nachricht kann nur einmal gelesen werden.</p>
+    <p>Nach 5 Minuten oder beim ersten Aufruf wird sie gelöscht.</p>
+    <textarea id="message" placeholder="Deine geheime Nachricht..."></textarea>
+    <button onclick="sendMessage()">Link generieren</button>
+    <br>
+    <br>
+
+    <div id="linkContainer" class="hidden">
+        <p>Geheimer Link zur Nachricht:</p>
+        <input id="link" readonly/>
+        <button onclick="copyLink()">Link kopieren</button>
+    </div>
+</div>
+
+<script src="scripts/index.js"></script>
+</body>
+</html>

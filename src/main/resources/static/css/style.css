@@ -1,0 +1,193 @@
+body {
+    background-color: #121212;
+    color: white;
+    font-family: monospace;
+    padding: 40px;
+}
+
+.container {
+    max-width: 600px;
+    margin: auto;
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+button {
+    background-color: #e53935;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #c62828;
+}
+
+textarea, input {
+    width: 100%;
+    margin: 10px 0;
+    background-color: #2b2b2b;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+pre {
+    background-color: #2b2b2b;
+    padding: 10px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+#notFound {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.hidden {
+    display: none;
+}
+
+.warn {
+    color: #ff5252;
+    margin-top: 10px;
+}
+
+h1 {
+    font-size: 2em;
+    font-family: 'Amethysta', serif;
+    text-align: center;
+    line-height: 1.4em;
+    text-transform: uppercase;
+    letter-spacing: .3em;
+    white-space:nowrap;
+}
+
+span {
+    color: #000;
+    font-family: 'Caesar Dressing', cursive;
+    font-size: 5em;
+    text-transform: lowercase;
+    vertical-align: middle;
+    letter-spacing: .2em;
+}
+
+.fire {
+    animation: animation 1s ease-in-out infinite alternate;
+    -moz-animation: animation 1s ease-in-out infinite alternate;
+    -webkit-animation: animation 1s ease-in-out infinite alternate;
+    -o-animation: animation 1s ease-in-out infinite alternate;
+}
+
+.burn {
+    animation: animation .65s ease-in-out infinite alternate;
+    -moz-animation: animation .65s ease-in-out infinite alternate;
+    -webkit-animation: animation .65s ease-in-out infinite alternate;
+    -o-animation: animation .65s ease-in-out infinite alternate;
+}
+
+@keyframes animation
+{
+    0% {text-shadow: 0 0 20px #fefcc9,
+    10px -10px 30px #feec85,
+    -20px -20px 40px #ffae34,
+    20px -40px 50px #ec760c,
+    -20px -60px 60px #cd4606,
+    0 -80px 70px #973716,
+    10px -90px 80px #451b0e;}
+    100% {text-shadow: 0 0 20px #fefcc9,
+    10px -10px 30px #fefcc9,
+    -20px -20px 40px #feec85,
+    22px -42px 60px #ffae34,
+    -22px -58px 50px #ec760c,
+    0 -82px 80px #cd4606,
+    10px -90px 80px  #973716;}
+}
+
+@-moz-keyframes animation
+{
+    0% {text-shadow: 0 0 20px #fefcc9,
+    10px -10px 30px #feec85,
+    -20px -20px 40px #ffae34,
+    20px -40px 50px #ec760c,
+    -20px -60px 60px #cd4606,
+    0 -80px 70px #973716,
+    10px -90px 80px #451b0e;}
+    100% {text-shadow: 0 0 20px #fefcc9,
+    10px -10px 30px #fefcc9,
+    -20px -20px 40px #feec85,
+    22px -42px 60px #ffae34,
+    -22px -58px 50px #ec760c,
+    0 -82px 80px #cd4606,
+    10px -90px 80px  #973716;}
+}
+
+@-webkit-keyframes animation
+{
+    0% {text-shadow: 0 0 20px #fefcc9,
+    10px -10px 30px #feec85,
+    -20px -20px 40px #ffae34,
+    20px -40px 50px #ec760c,
+    -20px -60px 60px #cd4606,
+    0 -80px 70px #973716,
+    10px -90px 80px #451b0e;}
+    100% {text-shadow: 0 0 20px #fefcc9,
+    10px -10px 30px #fefcc9,
+    -20px -20px 40px #feec85,
+    22px -42px 60px #ffae34,
+    -22px -58px 50px #ec760c,
+    0 -82px 80px #cd4606,
+    10px -90px 80px  #973716;}
+}
+
+@-o-keyframes animation
+{
+    0% {text-shadow: 0 0 20px #fefcc9,
+    10px -10px 30px #feec85,
+    -20px -20px 40px #ffae34,
+    20px -40px 50px #ec760c,
+    -20px -60px 60px #cd4606,
+    0 -80px 70px #973716,
+    10px -90px 80px #451b0e;}
+    100% {text-shadow: 0 0 20px #fefcc9,
+    10px -10px 30px #fefcc9,
+    -20px -20px 40px #feec85,
+    22px -42px 60px #ffae34,
+    -22px -58px 50px #ec760c,
+    0 -82px 80px #cd4606,
+    10px -90px 80px  #973716;}
+}
+
+.fire {
+    animation-delay: 0s;
+}
+.burn {
+    animation-delay: 0.3s;
+}
+
+span {
+    font-size: 2.5em;
+}
+
+h1 {
+    text-align: center;
+    font-size: 1.8em;
+    margin-bottom: 60px;
+    white-space: normal;
+    word-break: break-word;
+}
+
+#message{
+    width: 100%;
+    max-width: 580px;
+}
+
+input[readonly] {
+    cursor: pointer;
+    user-select: all;
+}
