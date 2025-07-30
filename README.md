@@ -142,7 +142,7 @@ Swagger/OpenAPI UI:
 
 ## 🗂️ Konfigurationsdateien
 
-### `application.yml`
+### Beispiel für `application.yml`
 
 ```yaml
 server:
