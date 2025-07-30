@@ -163,8 +163,4 @@ logging.level.org.hibernate.orm.jbdc.bind=trace
 spring.datasource.url=jdbc:postgresql://localhost:5432/burnafterreading
 spring.datasource.username=yourdbusername
 spring.datasource.password=yourdbpassword
-
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 ```
