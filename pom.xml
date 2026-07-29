@@ -1,118 +1,32 @@
-Wir machen machen bei dem OTP-Service vermutlich immer Authentifizierung mit dem Client-Credentials-Flow, was bedeutet das der Username bei der Authentifizierung die Client-ID ist.
-Der Principal-Name wird aber bereits aus dem Subject-Claim extrahiert (ist hier konfiguriert: und für den Fall das keine Authentifizierung stattgefunden hat wäre Authentication null. In dem Fall soll das Optional was hier zurückgegeben wird, leer sein. Es würde also folgendes reichen:
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.domain.AuditorAware;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
-        return Optional.of(SecurityContextHolder.getContext())
-                       .map(SecurityContext::getAuthentication)
-                       .map(Authentication::getName);
-Aber wir wollen vermutlich das im Audit-Log der original Benutzer steht der sich an der UI angemeldet hat. Die Info müssten wir extra übergeben. Wir könnten es einheitlich machen mit einem HTTP-Header. Meine Idee wäre X-Audit-Log-Actor und dann müssten wir hier prüfen ob der Header da ist und falls vorhanden den Namen aus dem Header nehmmen. Das müsste dann so aussehen:
-
-        return Optional.ofNullable(RequestContextHolder.getRequestAttributes())
-                       .filter(ServletRequestAttributes.class::isInstance)
-                       .map(ServletRequestAttributes.class::cast)
-                       .map(ServletRequestAttributes::getRequest)
-                       .map(request -> StringUtils.trimToNull(request.getHeader("X-Audit-Log-Actor")))
-                       .or(() -> Optional.of(SecurityContextHolder.getContext())
-                                         .map(SecurityContext::getAuthentication)
-                                         .map(Authentication::getName));
-
-
-
-@Configuration
-@EnableMethodSecurity(jsr250Enabled = true)
-public class SecurityConfig {
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        return http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authz -> authz.requestMatchers(HttpMethod.GET,
-                                "/api/v1/totp/*",
-                                "/api/v1/totp/*/random-secret",
-                                "/actuator/info",
-                                "/actuator/prometheus",
-                                "/actuator/metrics",
-                                "/actuator/health/**",
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**")
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated())
-                .oauth2ResourceServer(rsc -> rsc.jwt(jwtc -> {
-                    var jwtac = new JwtAuthenticationConverter();
-                    var jwtgac = new JwtGrantedAuthoritiesConverter();
-                    jwtgac.setAuthoritiesClaimDelimiter(";");
-                    jwtgac.setAuthoritiesClaimName("grp");
-                    jwtgac.setAuthorityPrefix("ROLE_");
-                    jwtac.setJwtGrantedAuthoritiesConverter(jwtgac);
-                    jwtac.setPrincipalClaimName("sub");
-                    jwtc.jwtAuthenticationConverter(jwtac);
-                }))
-                .build();
-    }
-}
+import java.util.Optional;
 
 @Component("clientAuditorAware")
 public class ClientAuditorAware implements AuditorAware<String> {
 
     @Override
     public Optional<String> getCurrentAuditor() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            var jwt = jwtAuth.getToken();
-
-            String clientId = jwt.getSubject();
-
-            if (clientId != null && !clientId.isBlank()) {
-                return Optional.of(clientId);
-            }
-        }
-
-        return Optional.ofNullable(RequestContextHolder.getRequestAttributes())
+        // 1. Priorität: Der explizit übergebene Header (der echte User aus der UI)
+        Optional<String> actorFromHeader = Optional.ofNullable(RequestContextHolder.getRequestAttributes())
                 .filter(ServletRequestAttributes.class::isInstance)
                 .map(ServletRequestAttributes.class::cast)
                 .map(ServletRequestAttributes::getRequest)
-                .map(request -> StringUtils.trimToNull(request.getHeader("X-Audit-Log-Actor")))
-                .or(() -> Optional.of(SecurityContextHolder.getContext())
-                        .map(SecurityContext::getAuthentication)
-                        .map(Authentication::getName));
+                .map(request -> StringUtils.trimToNull(request.getHeader("X-Audit-Log-Actor")));
 
+        if (actorFromHeader.isPresent()) {
+            return actorFromHeader;
+        }
+
+        // 2. Fallback: Der Principal aus dem Security Context (die Client-ID)
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getName);
     }
 }
-
-@Configuration
-@EnableJdbcAuditing(auditorAwareRef = "clientAuditorAware")
-public class DataJdbcConfig {
-
-}
-
-
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Table(name = "TOTP_AUDIT_LOG")
-public class AuditLog {
-
-    @Id
-    @Column("ID")
-    private Long id;
-
-
-    @Column("USERNAME")
-    private String username;
-
-    @CreatedBy
-    @Column("ACTING_USER")
-    private String actingUser;
-
-    @Column("ACTION")
-    private AuditActions action;
-
-    @CreatedDate
-    @InsertOnlyProperty
-    @Column("CREATED_AT")
-    private Instant createdAt;
-
-}        
-        
