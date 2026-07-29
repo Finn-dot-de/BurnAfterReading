@@ -170,3 +170,200 @@
         verify(rateLimitService, never()).logAudit(anyString(), any());
     }
 }
+
+@Service
+@RequiredArgsConstructor
+public class RateLimitServiceImpl implements RateLimitService {
+
+    private final AuditLogRepository auditLogRepository;
+
+    @Override
+    public void checkRateLimit(String username, int seconds, List<AuditActions> targetActions) {
+        Instant timeAgo = Instant.now().minusSeconds(seconds);
+
+        long failedAttempts = auditLogRepository.countByUsernameAndActionInAndCreatedAtAfter(username, targetActions, timeAgo);
+        if (failedAttempts >= NUMBER_OF_FAILINGS_UNTIL_RATE_LIMIT) {
+            throw new ResponseStatusException(
+                    HttpStatus.TOO_MANY_REQUESTS,
+                    "Zu viele fehlerhafte Versuche. Bitte warte ein paar Minuten."
+            );
+        }
+    }
+}
+
+
+
+            @Slf4j
+@Service
+@Validated
+@RequiredArgsConstructor
+public class TotpServiceImpl implements TotpService {
+    private static final String ALLOWED_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final List<AuditActions> RATE_LIMIT_ACTIONS = List.of(
+            AuditActions.VALIDATE_FAILURE,
+            AuditActions.RESET_FAILURE,
+            AuditActions.SETUP_FAILURE
+    );
+    private final OtpServiceProperties otpProperties;
+    private final TotpCredentialsRepository repository;
+    private final Map<String, CodeVerifier> codeVerifiers;
+    private final SecretGenerator secretGenerator;
+    private final EncryptionService encryptionService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final RateLimitService rateLimitService;
+
+    @Override
+    @Transactional
+    public SetupResponse setup(String username, Algorithm algorithm) {
+
+        TotpCredentials credentials = repository.findByUsernameIgnoreCase(username)
+                .orElseGet(TotpCredentials.builder()
+                        .username(username)
+                        .digits(OtpServiceProperties.DIGITS)
+                        .period(OtpServiceProperties.PERIOD)::build);
+
+        var selectedAlgorithm = Optional.ofNullable(algorithm)
+                .orElse(otpProperties.getDefaultAlgorithm());
+
+        if (credentials.getActivatedAt() != null) {
+            eventPublisher.publishEvent(new AuditLogEvent(username, AuditActions.SETUP_FAILURE));
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User hat bereits ein aktives 2FA eingerichtet.");
+        }
+
+        credentials.setAlgorithm(selectedAlgorithm);
+
+        String secret;
+
+        try {
+            secret = secretGenerator.generate();
+            String encryptedSecret = encryptionService.encrypt(secret);
+
+            credentials.setRecoveryKeyFormat(PasswordHashFormat.SHA512_DOT_SALT);
+
+            credentials.setSecretKey(encryptedSecret);
+            repository.save(credentials);
+
+            eventPublisher.publishEvent(new AuditLogEvent(username, AuditActions.SETUP_SUCCESS));
+
+        } catch (GeneralSecurityException e) {
+            eventPublisher.publishEvent(new AuditLogEvent(username, AuditActions.SETUP_FAILURE));
+            log.error("Fehler bei der Secret-Verschlüsselung: ", e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Secret konnte nicht sicher verarbeitet werden: ", e
+            );
+        }
+
+        var uri = String.format(
+                "otpauth://totp/%s:%s?algorithm=%s&digits=%d&issuer=%s&period=%d&secret=%s",
+                otpProperties.getServiceName(), username, selectedAlgorithm, OtpServiceProperties.DIGITS,
+                otpProperties.getServiceName(), OtpServiceProperties.PERIOD, secret
+        );
+        return new SetupResponse(selectedAlgorithm, OtpServiceProperties.DIGITS,
+                OtpServiceProperties.PERIOD, secret, uri);
+    }
+
+    private String generateFormattedRecoveryKey() {
+        StringBuilder keyBuilder = new StringBuilder();
+        for (int i = 0; i < 16; i++) {
+            if (i > 0 && i % 4 == 0) {
+                keyBuilder.append(" ");
+            }
+            int randomIndex = SECURE_RANDOM.nextInt(ALLOWED_CHARS.length());
+            keyBuilder.append(ALLOWED_CHARS.charAt(randomIndex));
+        }
+        return keyBuilder.toString();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StatusResponse> checkStatus(String username) {
+        return repository.findByUsernameIgnoreCase(username)
+                .map(creds -> new StatusResponse(creds.getActivatedAt() != null));
+    }
+
+    @Override
+    @Transactional
+    public void reset(String username) {
+        repository.deleteByUsernameIgnoreCase(username);
+    }
+
+    @Override
+    @Transactional
+    public Optional<ValidationResponse> validateCode(String username, String code) {
+
+        rateLimitService.checkRateLimit(username, OtpServiceProperties.RATE_LIMIT_DEFAULT_SECONDS, RATE_LIMIT_ACTIONS);
+
+        var credsOpt = repository.findByUsernameIgnoreCase(username);
+        return credsOpt.map(credentials -> {
+
+            boolean codeValid;
+            try {
+                codeValid = Optional.ofNullable(codeVerifiers.get(credentials.getAlgorithm().name()))
+                        .orElseThrow(unsupportedAlgorithm(credentials.getAlgorithm()))
+                        .isValidCode(encryptionService.decrypt(credentials.getSecretKey()), stripAllWhitespaces(code));
+            } catch (GeneralSecurityException e) {
+                log.error("Secret konnte nicht entschlüsselt werden: ", e);
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Secret konnte nicht entschlüsselt werden: ", e);
+            }
+
+            if (codeValid) {
+                eventPublisher.publishEvent(new AuditLogEvent(username, AuditActions.VALIDATE_SUCCESS));
+            } else {
+                eventPublisher.publishEvent(new AuditLogEvent(username, AuditActions.VALIDATE_FAILURE));
+            }
+
+            String recoveryKey = null;
+            if (codeValid && credentials.getActivatedAt() == null) {
+                credentials.setActivatedAt(Instant.now());
+                recoveryKey = generateFormattedRecoveryKey();
+                PasswordHashFormat hashFormat = otpProperties.getDefaultPasswordHashFormat();
+                String hashedRecoveryKey = hashFormat.encode(stripAllWhitespaces(recoveryKey));
+                credentials.setRecoveryKey(hashedRecoveryKey);
+
+                credentials.setRecoveryKeyFormat(hashFormat);
+                repository.save(credentials);
+            }
+            return new ValidationResponse(codeValid, recoveryKey);
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean validateRecoveryKey(String username, String recoveryKey) {
+
+        rateLimitService.checkRateLimit(username, OtpServiceProperties.RATE_LIMIT_RESET_SECONDS, RATE_LIMIT_ACTIONS);
+
+        return repository.findByUsernameIgnoreCase(username)
+                .map(credentials -> {
+                    String hashedRecoveryKey = credentials.getRecoveryKey();
+                    PasswordHashFormat formatFromDb = credentials.getRecoveryKeyFormat();
+
+                    if (formatFromDb == null) {
+                        formatFromDb = PasswordHashFormat.SHA512_DOT_SALT;
+                    }
+
+                    boolean keyValid = formatFromDb.check(stripAllWhitespaces(recoveryKey), hashedRecoveryKey);
+
+                    if (keyValid) {
+                        eventPublisher.publishEvent(new AuditLogEvent(username, AuditActions.RESET_SUCCESS));
+                    } else {
+                        eventPublisher.publishEvent(new AuditLogEvent(username, AuditActions.RESET_FAILURE));
+                    }
+
+                    return keyValid;
+                })
+                .orElse(false);
+    }
+
+    private Supplier<IllegalStateException> unsupportedAlgorithm(Algorithm algorithm) {
+        return () -> new IllegalStateException("Unsupported algorithm " + algorithm.name());
+    }
+
+    private String stripAllWhitespaces(String str) {
+        return Optional.ofNullable(str).map(x -> x.replaceAll("\\s", ""))
+                .orElse("");
+    }
+
+}
